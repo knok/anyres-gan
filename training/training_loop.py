@@ -119,6 +119,7 @@ def training_loop(
     apa_target              = None,     # APA target value. None = fixed p.
     apa_interval            = 4,        # How often to perform APA adjustment?
     apa_kimg                = 500,      # APA adjustment speed, measured in how many kimg it takes for p to increase/decrease by one unit.
+    with_dataaug            = False,    # Enable standard data augmentations for the discriminator inputs? Usually improve further thanks to the compatibility.
     total_kimg              = 25000,    # Total length of the training, measured in thousands of real images.
     kimg_per_tick           = 4,        # Progress snapshot interval.
     image_snapshot_ticks    = 50,       # How often to save image snapshots? None = disable.
@@ -258,7 +259,7 @@ def training_loop(
     # Setup training phases.
     if rank == 0:
         print('Setting up training phases...')
-    loss = dnnlib.util.construct_class_by_name(device=device, G=G, D=D, augment_pipe=augment_pipe,
+    loss = dnnlib.util.construct_class_by_name(device=device, G=G, with_dataaug=with_dataaug, D=D, augment_pipe=augment_pipe,
                                                added_kwargs=added_kwargs, teacher=teacher, **loss_kwargs) # subclass of training.loss.Loss
 
     phases = []

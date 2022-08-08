@@ -160,6 +160,7 @@ def parse_comma_separated_list(s):
 @click.option('--mbstd-group',  help='Minibatch std group size', metavar='INT',                 type=click.IntRange(min=1), default=4, show_default=True)
 # Discriminator augumentaion (apa)
 @click.option('--augpipe',      help=' Augmentation pipeline',                                  type=click.Choice(['blit', 'geom', 'color', 'filter', 'noise', 'cutout', 'bg', 'bgc']), default='bgc', show_default=True)
+@click.option('--with-dataaug', help=' dataaug', metavar='BOOL',                                type=bool, default=False, show_default=True)
 
 # Misc settings.
 @click.option('--desc',         help='String to include in result dir name', metavar='STR',     type=str)
@@ -348,6 +349,10 @@ def main(**kwargs):
     assert opts.augpipe in augpipe_specs
     if opts.aug != 'noaug':
         c.augment_kwargs = dnnlib.EasyDict(class_name='training.augment.AugmentPipe', **augpipe_specs[opts.augpipe])
+    if opts.with_dataaug is None:
+        opts.with_dataaug = False
+    assert isinstance(opts.with_dataaug, bool)
+    c.with_dataaug = opts.with_dataaug
 
     # Resume.
     if opts.resume is not None:

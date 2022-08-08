@@ -116,6 +116,9 @@ def training_loop(
     ada_target              = None,     # ADA target value. None = fixed p.
     ada_interval            = 4,        # How often to perform ADA adjustment?
     ada_kimg                = 500,      # ADA adjustment speed, measured in how many kimg it takes for p to increase/decrease by one unit.
+    apa_target              = None,     # APA target value. None = fixed p.
+    apa_interval            = 4,        # How often to perform APA adjustment?
+    apa_kimg                = 500,      # APA adjustment speed, measured in how many kimg it takes for p to increase/decrease by one unit.
     total_kimg              = 25000,    # Total length of the training, measured in thousands of real images.
     kimg_per_tick           = 4,        # Progress snapshot interval.
     image_snapshot_ticks    = 50,       # How often to save image snapshots? None = disable.
@@ -226,11 +229,17 @@ def training_loop(
         print('Setting up augmentation...')
     augment_pipe = None
     ada_stats = None
-    if (augment_kwargs is not None) and (augment_p > 0 or ada_target is not None):
+    # if (augment_kwargs is not None) and (augment_p > 0 or ada_target is not None):
+    #     augment_pipe = dnnlib.util.construct_class_by_name(**augment_kwargs).train().requires_grad_(False).to(device) # subclass of torch.nn.Module
+    #     augment_pipe.p.copy_(torch.as_tensor(augment_p))
+    #     if ada_target is not None:
+    #         ada_stats = training_stats.Collector(regex='Loss/signs/real')
+    apa_stats = None
+    if (augment_kwargs is not None) and (augment_p > 0 or apa_target is not None):
         augment_pipe = dnnlib.util.construct_class_by_name(**augment_kwargs).train().requires_grad_(False).to(device) # subclass of torch.nn.Module
         augment_pipe.p.copy_(torch.as_tensor(augment_p))
-        if ada_target is not None:
-            ada_stats = training_stats.Collector(regex='Loss/signs/real')
+        if apa_target is not None:
+            apa_stats = training_stats.Collector(regex='Loss/signs/real')
 
     # Distribute across GPUs.
     if rank == 0:
@@ -402,9 +411,13 @@ def training_loop(
         batch_idx += 1
 
         # Execute ADA heuristic.
-        if (ada_stats is not None) and (batch_idx % ada_interval == 0):
-            ada_stats.update()
-            adjust = np.sign(ada_stats['Loss/signs/real'] - ada_target) * (batch_size * ada_interval) / (ada_kimg * 1000)
+        # if (ada_stats is not None) and (batch_idx % ada_interval == 0):
+        #     ada_stats.update()
+        #     adjust = np.sign(ada_stats['Loss/signs/real'] - ada_target) * (batch_size * ada_interval) / (ada_kimg * 1000)
+        #     augment_pipe.p.copy_((augment_pipe.p + adjust).max(misc.constant(0, device=device)))
+        if (apa_stats is not None) and (batch_idx % apa_interval == 0):
+            apa_stats.update()
+            adjust = np.sign(apa_stats['Loss/signs/real'] - apa_target) * (batch_size * apa_interval) / (apa_kimg * 1000)
             augment_pipe.p.copy_((augment_pipe.p + adjust).max(misc.constant(0, device=device)))
 
         # Perform maintenance tasks once per tick.
